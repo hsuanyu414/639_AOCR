@@ -159,9 +159,9 @@
     <widget class="QGraphicsView" name="y_view">
      <property name="geometry">
       <rect>
-       <x>260</x>
+       <x>290</x>
        <y>20</y>
-       <width>301</width>
+       <width>250</width>
        <height>301</height>
       </rect>
      </property>
@@ -169,10 +169,10 @@
     <widget class="QGraphicsView" name="z_view">
      <property name="geometry">
       <rect>
-       <x>21</x>
+       <x>20</x>
        <y>330</y>
-       <width>541</width>
-       <height>241</height>
+       <width>250</width>
+       <height>250</height>
       </rect>
      </property>
     </widget>
@@ -181,7 +181,7 @@
       <rect>
        <x>21</x>
        <y>20</y>
-       <width>231</width>
+       <width>250</width>
        <height>301</height>
       </rect>
      </property>
