@@ -13,6 +13,13 @@ import nibabel as nib
 
 import numpy as np
 
+from enum import Enum
+
+class DIRECTION(Enum):
+    X = 1
+    Y = 2
+    Z = 3
+
 class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(MyMainWindow, self).__init__(parent=parent)
@@ -39,10 +46,22 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.thickness = 2
         self.rect_length = 50
 
+        self.record_coord_list = []
+
         # link slider 
-        self.x_slice_slider.valueChanged.connect(self.x_slice_slider_changed)
-        self.y_slice_slider.valueChanged.connect(self.y_slice_slider_changed)
-        self.z_slice_slider.valueChanged.connect(self.z_slice_slider_changed)
+        self.x_slice_slider.valueChanged.connect(lambda: self.slice_slider_changed(DIRECTION.X))
+        self.y_slice_slider.valueChanged.connect(lambda: self.slice_slider_changed(DIRECTION.Y))
+        self.z_slice_slider.valueChanged.connect(lambda: self.slice_slider_changed(DIRECTION.Z))
+
+        # link button
+        self.x_plus_1.clicked.connect(lambda: self.plus_minus_1(DIRECTION.X, 1))
+        self.x_minus_1.clicked.connect(lambda: self.plus_minus_1(DIRECTION.X, -1))
+        self.y_plus_1.clicked.connect(lambda: self.plus_minus_1(DIRECTION.Y, 1))
+        self.y_minus_1.clicked.connect(lambda: self.plus_minus_1(DIRECTION.Y, -1))
+        self.z_plus_1.clicked.connect(lambda: self.plus_minus_1(DIRECTION.Z, 1))
+        self.z_minus_1.clicked.connect(lambda: self.plus_minus_1(DIRECTION.Z, -1))
+
+        self.record_coord.clicked.connect(self.record_coord_clicked)
 
     def qimg2np(self, qimg):
         # input qimg is a QImage object and output arr is a numpy array
@@ -85,7 +104,6 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.show_image(image_temp, self.x_view)
         self.show_image(image_temp_focus, self.x_view_focus)
 
-
     def show_y_image(self):
         # show y image main view and focus view
         image_temp = self.ct_image[:, self.y_index, ::-1].T
@@ -110,7 +128,6 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.show_image(image_temp, self.z_view)
         self.show_image(image_temp_focus, self.z_view_focus)
 
-
     def show_ct_image(self):
         # show ct image in each graphicsView
         self.show_x_image() # use this function to show x image (and y, z image also)
@@ -129,22 +146,44 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.z_slice_slider.setMinimum(0)
         self.z_slice_slider.setMaximum(self.ct_image.shape[2]-1)
 
-    def x_slice_slider_changed(self):
-        # change x_index according to slider
-        self.x_index = self.x_slice_slider.value()
-        self.show_ct_image()    
-
-    def y_slice_slider_changed(self):
-        # change y_index according to slider
-        self.y_index = self.y_slice_slider.value()
+    def slice_slider_changed(self, direction):
+        if direction == DIRECTION.X:
+            self.x_index = self.x_slice_slider.value()
+        elif direction == DIRECTION.Y:
+            self.y_index = self.y_slice_slider.value()
+        elif direction == DIRECTION.Z:
+            self.z_index = self.z_slice_slider.value()
         self.show_ct_image()
 
-    def z_slice_slider_changed(self):
-        # change z_index according to slider
-        self.z_index = self.z_slice_slider.value()
-        self.show_ct_image()
+    def plus_minus_1(self, direction, value):
+        if direction == DIRECTION.X:
+            self.x_index += value
+            self.x_slice_slider.setValue(self.x_index)
+        elif direction == DIRECTION.Y:
+            self.y_index += value
+            self.y_slice_slider.setValue(self.y_index)
+        elif direction == DIRECTION.Z:
+            self.z_index += value
+            self.z_slice_slider.setValue(self.z_index)
 
-                
+    def record_coord_clicked(self):
+        # check if the coord is already in the list
+        for coord in self.record_coord_list:
+            if coord[0] == self.x_index and coord[1] == self.y_index and coord[2] == self.z_index:
+                return
+        self.record_coord_list.append([self.x_index, self.y_index, self.z_index])
+        self.record_coord_list.sort()
+        
+        # show the coord in the list
+        self.listWidget.clear()
+        for coord in self.record_coord_list:
+            self.listWidget.addItem(str(coord))
+
+
+    
+    
+
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
