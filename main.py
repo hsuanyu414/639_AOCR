@@ -15,6 +15,8 @@ import numpy as np
 
 from enum import Enum
 
+from copy import deepcopy
+
 class DIRECTION(Enum):
     X = 1
     Y = 2
@@ -31,20 +33,25 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ct_image = self.ct_data.get_fdata()
         # normalize ct image
         self.ct_image = (self.ct_image - self.ct_image.min()) / (self.ct_image.max() - self.ct_image.min())*255
+
+        # define thickness of line
+        self.thickness = 2
+        self.rect_length = 50
+
         # reshape the z axis
         extend = np.zeros((self.ct_image.shape[0], self.ct_image.shape[0], 660))
         for i in range(self.ct_image.shape[1]):
             extend[:, i, :] = cv2.resize(self.ct_image[:, i, :], (660, self.ct_image.shape[0]), interpolation=cv2.INTER_CUBIC) 
         self.ct_image = extend.astype(np.uint8)
 
+        self.padding_ct_image = deepcopy(self.ct_image)
+        self.padding_ct_image = np.pad(self.padding_ct_image, ((self.rect_length, self.rect_length), (self.rect_length, self.rect_length), (0, 0)), 'constant', constant_values=0)
+
         # default index, should be determined by the slider
         self.x_index = 0
         self.y_index = 0
         self.z_index = 0
 
-        # define thickness of line
-        self.thickness = 2
-        self.rect_length = 50
 
         self.record_coord_list = []
 
@@ -75,7 +82,6 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def np2qimg(self, arr):
         # and output qimg is a QImage object
-        print(arr.shape)
         arr_bytes = bytes(arr)
         height, width, channel = arr.shape
         bytesPerLine = width*3
@@ -99,7 +105,9 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # draw line on image according to y_index and z_index
         image_temp[:, self.y_index-self.thickness:self.y_index+self.thickness, 1] = 255
         image_temp[self.z_index-self.thickness:self.z_index+self.thickness, :, 1] = 255
-        image_temp_focus = image_temp[self.z_index-50:self.z_index+50, self.y_index-50:self.y_index+50, :].copy()
+        
+        image_temp_focus = image_temp[max(0, self.z_index-50):min(self.z_index+50, self.ct_image.shape[2]), max(0, self.y_index-50):min(self.y_index+50, self.ct_image.shape[1]), :].copy()
+        
         cv2.rectangle(image_temp, (self.y_index-self.rect_length, self.z_index-self.rect_length), (self.y_index+self.rect_length, self.z_index+self.rect_length), (0, 255, 0), self.thickness)
         self.show_image(image_temp, self.x_view)
         self.show_image(image_temp_focus, self.x_view_focus)
@@ -111,7 +119,9 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # draw line on image according to x_index and z_index
         image_temp[:, self.x_index-self.thickness:self.x_index+self.thickness, 1] = 255
         image_temp[self.z_index-self.thickness:self.z_index+self.thickness, :, 1] = 255
-        image_temp_focus = image_temp[self.z_index-50:self.z_index+50, self.x_index-50:self.x_index+50, :].copy()
+
+        image_temp_focus = image_temp[max(0, self.z_index-50):min(self.z_index+50, self.ct_image.shape[2]), max(0, self.x_index-50):min(self.x_index+50, self.ct_image.shape[0]), :].copy()
+
         cv2.rectangle(image_temp, (self.x_index-self.rect_length, self.z_index-self.rect_length), (self.x_index+self.rect_length, self.z_index+self.rect_length), (0, 255, 0), self.thickness)
         self.show_image(image_temp, self.y_view)
         self.show_image(image_temp_focus, self.y_view_focus)
@@ -123,7 +133,9 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # draw line on image according to x_index and y_index
         image_temp[:, self.x_index-self.thickness:self.x_index+self.thickness, 1] = 255
         image_temp[self.y_index-self.thickness:self.y_index+self.thickness, :, 1] = 255
-        image_temp_focus = image_temp[self.y_index-50:self.y_index+50, self.x_index-50:self.x_index+50, :].copy()
+        
+        image_temp_focus = image_temp[max(0, self.y_index-50):min(self.y_index+50, self.ct_image.shape[1]), max(0, self.x_index-50):min(self.x_index+50, self.ct_image.shape[0]), :].copy()
+
         cv2.rectangle(image_temp, (self.x_index-self.rect_length, self.y_index-self.rect_length), (self.x_index+self.rect_length, self.y_index+self.rect_length), (0, 255, 0), self.thickness)
         self.show_image(image_temp, self.z_view)
         self.show_image(image_temp_focus, self.z_view_focus)
