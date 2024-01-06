@@ -154,7 +154,7 @@
      </rect>
     </property>
     <property name="title">
-     <string>GroupBox</string>
+     <string>View</string>
     </property>
     <widget class="QGraphicsView" name="y_view">
      <property name="geometry">
@@ -162,14 +162,14 @@
        <x>290</x>
        <y>20</y>
        <width>250</width>
-       <height>301</height>
+       <height>300</height>
       </rect>
      </property>
     </widget>
     <widget class="QGraphicsView" name="z_view">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>290</x>
        <y>330</y>
        <width>250</width>
        <height>250</height>
@@ -182,7 +182,7 @@
        <x>21</x>
        <y>20</y>
        <width>250</width>
-       <height>301</height>
+       <height>300</height>
       </rect>
      </property>
     </widget>
@@ -192,40 +192,40 @@
      <rect>
       <x>620</x>
       <y>50</y>
-      <width>501</width>
-      <height>181</height>
+      <width>681</width>
+      <height>231</height>
      </rect>
     </property>
     <property name="title">
-     <string>GroupBox</string>
+     <string>Focus View</string>
     </property>
     <widget class="QGraphicsView" name="y_view_focus">
      <property name="geometry">
       <rect>
-       <x>180</x>
+       <x>240</x>
        <y>20</y>
-       <width>150</width>
-       <height>150</height>
+       <width>200</width>
+       <height>200</height>
       </rect>
      </property>
     </widget>
     <widget class="QGraphicsView" name="z_view_focus">
      <property name="geometry">
       <rect>
-       <x>340</x>
+       <x>460</x>
        <y>20</y>
-       <width>150</width>
-       <height>150</height>
+       <width>200</width>
+       <height>200</height>
       </rect>
      </property>
     </widget>
     <widget class="QGraphicsView" name="x_view_focus">
      <property name="geometry">
       <rect>
-       <x>21</x>
+       <x>20</x>
        <y>20</y>
-       <width>150</width>
-       <height>150</height>
+       <width>200</width>
+       <height>200</height>
       </rect>
      </property>
     </widget>
@@ -243,7 +243,7 @@
      <string>Record Coord</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="read_image">
+   <widget class="QPushButton" name="select_folder">
     <property name="geometry">
      <rect>
       <x>30</x>
@@ -253,7 +253,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Read Image</string>
+     <string>Select Folder</string>
     </property>
    </widget>
    <widget class="QPushButton" name="save_to_csv">
@@ -269,11 +269,21 @@
      <string>Save to CSV</string>
     </property>
    </widget>
-   <widget class="QListWidget" name="listWidget">
+   <widget class="QListWidget" name="coord_list">
     <property name="geometry">
      <rect>
-      <x>630</x>
-      <y>280</y>
+      <x>620</x>
+      <y>290</y>
+      <width>256</width>
+      <height>341</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QListWidget" name="file_list">
+    <property name="geometry">
+     <rect>
+      <x>900</x>
+      <y>290</y>
       <width>256</width>
       <height>341</height>
      </rect>
@@ -286,7 +296,7 @@
      <x>0</x>
      <y>0</y>
      <width>1366</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
