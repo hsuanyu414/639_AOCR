@@ -186,9 +186,9 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def select_folder_clicked(self):
         # just open ./Data folder
-        self.current_open_file_folder = './Data'
+        # self.current_open_file_folder = './Data'
         # select folder and read image
-        # self.current_open_file_folder = QFileDialog.getExistingDirectory(self, "Select Folder")
+        self.current_open_file_folder = QFileDialog.getExistingDirectory(self, "Select Folder")
         
         self.opened_file_list.clear()
         for file in os.listdir(self.current_open_file_folder):
@@ -238,7 +238,8 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             return
         # save coord list to csv file
         df = pd.DataFrame(self.record_coord_list, columns=['x', 'y', 'z'])
-        df.to_csv("Data/{}_coord.csv".format(self.ct_image_name), index=False)
+        # df.to_csv("Data/{}_coord.csv".format(self.ct_image_name), index=False)
+        df.to_csv(os.path.join(self.current_open_file_folder, '{}_coord.csv'.format(self.ct_image_name)), index=False)
 
     def record_coord_clicked(self):
         # check if the coord is already in the list
