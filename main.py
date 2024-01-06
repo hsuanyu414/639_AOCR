@@ -19,6 +19,8 @@ from enum import Enum
 
 from copy import deepcopy
 
+import matplotlib.pyplot as plt
+
 import os
 
 class DIRECTION(Enum):
@@ -40,6 +42,19 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ct_image = None
         self.ct_image_name = None
 
+        # window width & window level
+        self.ww = 400
+        self.wl = 40
+
+        # mask image & cube size
+        self.mask_image = None
+        self.cube_size = [8, 8, 8]
+        self.mask_alpha = 0.7
+        self.line_alpha = 0.7
+
+        # coord list sort option
+        self.coord_list_sort_option = 'value'
+
         # define thickness of line
         self.thickness = 2 #set the value larger than 2 to see more clearly
         self.rect_length = 100
@@ -58,6 +73,9 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.x_slice_slider.valueChanged.connect(lambda: self.slice_slider_changed(DIRECTION.X))
         self.y_slice_slider.valueChanged.connect(lambda: self.slice_slider_changed(DIRECTION.Y))
         self.z_slice_slider.valueChanged.connect(lambda: self.slice_slider_changed(DIRECTION.Z))
+        self.focus_slider.valueChanged.connect(self.focus_slider_changed)
+        self.mask_alpha_slider.valueChanged.connect(lambda: self.alpha_slider_changed("mask"))
+        self.line_alpha_slider.valueChanged.connect(lambda: self.alpha_slider_changed("line"))
 
         # link button
         self.x_plus_1.clicked.connect(lambda: self.plus_minus_1(DIRECTION.X, 1))
@@ -69,9 +87,12 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.select_folder.clicked.connect(self.select_folder_clicked)
         self.record_coord.clicked.connect(self.record_coord_clicked)
         self.save_to_csv.clicked.connect(self.save_to_csv_clicked)
+        self.delete_coord.clicked.connect(self.delete_coord_clicked)
+        self.coord_list_sort.clicked.connect(self.coord_list_sort_clicked)
 
         # list element clicked
         self.file_list.itemClicked.connect(self.file_list_clicked)
+        self.coord_list.itemDoubleClicked.connect(self.coord_list_double_clicked)
 
     def qimg2np(self, qimg):
         # input qimg is a QImage object and output arr is a numpy array
@@ -104,29 +125,59 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def show_x_image(self):
         # show x image main view and focus view
         image_temp = self.ct_image[self.x_index, :, ::-1].T
+
+        # clip and normalize image
+        image_temp[image_temp > self.wl+self.ww/2] = self.wl+self.ww/2
+        image_temp[image_temp < self.wl-self.ww/2] = self.wl-self.ww/2
+        image_temp = cv2.normalize(image_temp, None, 0, 255, cv2.NORM_MINMAX)
+        image_temp = image_temp.astype(np.uint8)
         image_temp = cv2.cvtColor(image_temp, cv2.COLOR_GRAY2RGB)
+
         # draw line on image according to y_index and z_index
-        image_temp[:, self.y_index-self.thickness:self.y_index+self.thickness, :] = COLOR.RED.value
-        image_temp[self.z_index-self.thickness:self.z_index+self.thickness, :, :] = COLOR.RED.value
+        reverse_z_index = abs(self.z_index - self.ct_image.shape[2])
+        image_temp[:, self.y_index-self.thickness:self.y_index+self.thickness, :] = \
+            tuple([x * self.line_alpha for x in COLOR.RED.value]) + image_temp[:, self.y_index-self.thickness:self.y_index+self.thickness, :] * (1 - self.line_alpha)
+        image_temp[reverse_z_index-self.thickness:reverse_z_index+self.thickness, :, :] = \
+            tuple([x * self.line_alpha for x in COLOR.RED.value]) + image_temp[reverse_z_index-self.thickness:reverse_z_index+self.thickness, :, :] * (1 - self.line_alpha)
+
+        # add mask image to red channel
+        if self.mask_image is not None:
+            mark_temp = self.mask_image[self.x_index, :, ::-1].T
+            image_temp[mark_temp > 0, :] = tuple([x * self.mask_alpha for x in COLOR.GREEN.value]) + image_temp[mark_temp > 0, :] * (1 - self.mask_alpha)
         
-        image_temp_focus = image_temp[max(0, self.z_index-50):min(self.z_index+50, self.ct_image.shape[2]), max(0, self.y_index-50):min(self.y_index+50, self.ct_image.shape[1]), :].copy()
+        image_temp_focus = image_temp[max(0, reverse_z_index-self.rect_length):min(reverse_z_index+self.rect_length, self.ct_image.shape[2]), max(0, self.y_index-self.rect_length):min(self.y_index+self.rect_length, self.ct_image.shape[1]), :].copy()
         
-        cv2.rectangle(image_temp, (self.y_index-self.rect_length, self.z_index-self.rect_length), (self.y_index+self.rect_length, self.z_index+self.rect_length), COLOR.YELLOW.value, self.thickness)
+        cv2.rectangle(image_temp, (self.y_index-self.rect_length, reverse_z_index-self.rect_length), (self.y_index+self.rect_length, reverse_z_index+self.rect_length), COLOR.YELLOW.value, self.thickness)
         self.show_image(image_temp, self.x_view)
         self.show_image(image_temp_focus, self.x_view_focus)
 
     def show_y_image(self):
         # show y image main view and focus view
         image_temp = self.ct_image[:, self.y_index, ::-1].T
-        image_temp = cv2.cvtColor(image_temp, cv2.COLOR_GRAY2RGB)
-        # draw line on image according to x_index and z_index
-        image_temp[:, self.x_index-self.thickness:self.x_index+self.thickness, :] = COLOR.RED.value
-        image_temp[self.z_index-self.thickness:self.z_index+self.thickness, :, :] = COLOR.RED.value
 
-        image_temp_focus = image_temp[max(0, self.z_index-50):min(self.z_index+50, self.ct_image.shape[2]), max(0, self.x_index-50):min(self.x_index+50, self.ct_image.shape[0]), :].copy()
+        # clip and normalize image
+        image_temp[image_temp > self.wl+self.ww/2] = self.wl+self.ww/2
+        image_temp[image_temp < self.wl-self.ww/2] = self.wl-self.ww/2
+        image_temp = cv2.normalize(image_temp, None, 0, 255, cv2.NORM_MINMAX)
+        image_temp = image_temp.astype(np.uint8)
+        image_temp = cv2.cvtColor(image_temp, cv2.COLOR_GRAY2RGB)
+
+        # draw line on image according to x_index and z_index
+        reverse_z_index = abs(self.z_index - self.ct_image.shape[2])
+        image_temp[:, self.x_index-self.thickness:self.x_index+self.thickness, :] = \
+            tuple([x * self.line_alpha for x in COLOR.RED.value]) + image_temp[:, self.x_index-self.thickness:self.x_index+self.thickness, :] * (1 - self.line_alpha)
+        image_temp[reverse_z_index-self.thickness:reverse_z_index+self.thickness, :, :] = \
+            tuple([x * self.line_alpha for x in COLOR.RED.value]) + image_temp[reverse_z_index-self.thickness:reverse_z_index+self.thickness, :, :] * (1 - self.line_alpha)
+
+        # add mask image to red channel
+        if self.mask_image is not None:
+            mark_temp = self.mask_image[:, self.y_index, ::-1].T
+            image_temp[mark_temp > 0, :] = tuple([x * self.mask_alpha for x in COLOR.GREEN.value]) + image_temp[mark_temp > 0, :] * (1 - self.mask_alpha)
+
+        image_temp_focus = image_temp[max(0, reverse_z_index-self.rect_length):min(reverse_z_index+self.rect_length, self.ct_image.shape[2]), max(0, self.x_index-self.rect_length):min(self.x_index+self.rect_length, self.ct_image.shape[0]), :].copy()
 
         cv2.rectangle(image_temp, 
-            (self.x_index-self.rect_length, self.z_index-self.rect_length), (self.x_index+self.rect_length, self.z_index+self.rect_length), 
+            (self.x_index-self.rect_length, reverse_z_index-self.rect_length), (self.x_index+self.rect_length, reverse_z_index+self.rect_length), 
             COLOR.YELLOW.value,
             self.thickness)
         self.show_image(image_temp, self.y_view)
@@ -134,15 +185,34 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def show_z_image(self):
         # show z image main view and focus view
-        image_temp = self.ct_image[:, :, self.z_index].T
-        image_temp = cv2.cvtColor(image_temp, cv2.COLOR_GRAY2RGB)
-        # draw line on image according to x_index and y_index
-        image_temp[:, self.x_index-self.thickness:self.x_index+self.thickness, :] = COLOR.RED.value
-        image_temp[self.y_index-self.thickness:self.y_index+self.thickness, :, :] = COLOR.RED.value
-        
-        image_temp_focus = image_temp[max(0, self.y_index-50):min(self.y_index+50, self.ct_image.shape[1]), max(0, self.x_index-50):min(self.x_index+50, self.ct_image.shape[0]), :].copy()
+        image_temp = self.ct_image[:, :, self.z_index]
 
-        cv2.rectangle(image_temp, (self.x_index-self.rect_length, self.y_index-self.rect_length), (self.x_index+self.rect_length, self.y_index+self.rect_length), COLOR.YELLOW.value, self.thickness)
+        # clip and normalize image
+        image_temp[image_temp > self.wl+self.ww/2] = self.wl+self.ww/2
+        image_temp[image_temp < self.wl-self.ww/2] = self.wl-self.ww/2
+        image_temp = cv2.normalize(image_temp, None, 0, 255, cv2.NORM_MINMAX)
+        image_temp = image_temp.astype(np.uint8)
+        image_temp = cv2.cvtColor(image_temp, cv2.COLOR_GRAY2RGB)
+
+        # draw line on image according to x_index and y_index
+        image_temp[:, self.y_index-self.thickness:self.y_index+self.thickness, :] = \
+            tuple([x * self.line_alpha for x in COLOR.RED.value]) + image_temp[:, self.y_index-self.thickness:self.y_index+self.thickness, :] * (1 - self.line_alpha)
+        image_temp[self.x_index-self.thickness:self.x_index+self.thickness, :, :] = \
+            tuple([x * self.line_alpha for x in COLOR.RED.value]) + image_temp[self.x_index-self.thickness:self.x_index+self.thickness, :, :] * (1 - self.line_alpha)
+
+        # add mask image to red channel
+        if self.mask_image is not None:
+            mark_temp = self.mask_image[:, :, self.z_index]
+            image_temp[mark_temp > 0, :] = tuple([x * self.mask_alpha for x in COLOR.GREEN.value]) + image_temp[mark_temp > 0, :] * (1 - self.mask_alpha)
+        
+        image_temp_focus = image_temp[max(0, self.x_index-self.rect_length):min(self.x_index+self.rect_length, self.ct_image.shape[0]), max(0, self.y_index-self.rect_length):min(self.y_index+self.rect_length, self.ct_image.shape[1]), :].copy()
+
+        cv2.rectangle(image_temp, (self.y_index-self.rect_length, self.x_index-self.rect_length), (self.y_index+self.rect_length, self.x_index+self.rect_length), COLOR.YELLOW.value, self.thickness)
+
+        # rotate image 90 degree
+        image_temp = cv2.rotate(image_temp, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        image_temp_focus = cv2.rotate(image_temp_focus, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
         self.show_image(image_temp, self.z_view)
         self.show_image(image_temp_focus, self.z_view_focus)
 
@@ -155,6 +225,47 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # self.show_image(self.ct_image[:, self.y_index, ::-1].T, self.y_view)
         # self.show_image(self.ct_image[:, :, self.z_index].T, self.z_view)
 
+    def initialize_mask_image(self):
+        """
+        Initialize mask image
+            1. set same size as ct image
+            2. mark pixels in the coord list
+        """
+        self.mask_image = np.zeros(self.ct_image.shape, dtype=np.uint8)
+        for coord in self.record_coord_list:
+            self.mark_cube(coord)
+
+    def mark_cube(self, coord, op = "mark"):
+        """
+        Mark or erase cube in the mask image
+            1. mark pixels in the coord list
+            2. center of the cube is marked as 255
+               other pixels in the cube is marked as 128
+        Input: 
+            coord_list:
+                type: list
+                description: index of single record
+                example: [x, y, z]
+        """
+        half_cube_size = [int(self.cube_size[0]/2), int(self.cube_size[1]/2), int(self.cube_size[2]/2)]
+        self.mask_image[coord[0], coord[1], coord[2]] = 255 if op == "mark" else 0
+        self.mask_image[max(0, coord[0]-half_cube_size[0]):min(coord[0]+half_cube_size[0], self.mask_image.shape[0]), 
+                        max(0, coord[1]-half_cube_size[1]):min(coord[1]+half_cube_size[1], self.mask_image.shape[1]), 
+                        max(0, coord[2]-half_cube_size[2]):min(coord[2]+half_cube_size[2], self.mask_image.shape[2])] = 128 if op == "mark" else 0
+        
+    def update_coord_list(self):
+        """
+        Update coord list according to sort option
+        """
+        if self.coord_list_sort_option == 'value':
+            tmp_list = sorted(self.record_coord_list)
+        elif self.coord_list_sort_option == 'add_time':
+            tmp_list = self.record_coord_list[::-1]
+
+        self.coord_list.clear()
+        for coord in tmp_list:
+            self.coord_list.addItem(str(coord))
+
     def slider_range(self):
         # set slider range according to ct image
         self.x_slice_slider.setMinimum(0)
@@ -163,6 +274,12 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.y_slice_slider.setMaximum(self.ct_image.shape[1]-1)
         self.z_slice_slider.setMinimum(0)
         self.z_slice_slider.setMaximum(self.ct_image.shape[2]-1)
+        self.focus_slider.setMinimum(30)
+        self.focus_slider.setMaximum(130)
+        self.mask_alpha_slider.setMinimum(0)
+        self.mask_alpha_slider.setMaximum(10)
+        self.line_alpha_slider.setMinimum(0)
+        self.line_alpha_slider.setMaximum(10)
 
     def slice_slider_changed(self, direction):
         if direction == DIRECTION.X:
@@ -172,6 +289,31 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         elif direction == DIRECTION.Z:
             self.z_index = self.z_slice_slider.value()
         self.show_ct_image()
+
+    def focus_slider_changed(self):
+        """
+        Change the length of rectangle in focus view
+        """
+        self.rect_length = self.focus_slider.value()
+        try:
+            self.show_ct_image()
+        except:
+            pass
+
+    def alpha_slider_changed(self, option):
+        """
+        Change the opacity of mask image
+            option: a. mask
+                    b. line
+        """
+        if option == "mask":
+            self.mask_alpha = self.mask_alpha_slider.value() / 10
+        elif option == "line":
+            self.line_alpha = self.line_alpha_slider.value() / 10
+        try:
+            self.show_ct_image()
+        except:
+            pass
 
     def plus_minus_1(self, direction, value):
         if direction == DIRECTION.X:
@@ -210,11 +352,11 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ct_image_name = os.path.basename(file_path)
         
         # normalize ct image
-        self.ct_image = (self.ct_image - self.ct_image.min()) / (self.ct_image.max() - self.ct_image.min())*255
         extend = np.zeros((self.ct_image.shape[0], self.ct_image.shape[0], 660))
         for i in range(self.ct_image.shape[1]):
             extend[:, i, :] = cv2.resize(self.ct_image[:, i, :], (660, self.ct_image.shape[0]), interpolation=cv2.INTER_CUBIC)
-        self.ct_image = extend.astype(np.uint8)
+        self.ct_image = extend
+
         self.slider_range()
         self.show_ct_image()
         # if there are corresponding coord file, read it
@@ -226,11 +368,30 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             for coord in self.record_coord_list:
                 self.coord_list.addItem(str(coord))
 
+        # initialize mask image
+        self.initialize_mask_image()
+
     def file_list_clicked(self):
         self.init_for_new_image()
         image_name = self.file_list.currentItem().text()
         file_path = os.path.join(self.current_open_file_folder, image_name)
         self.read_image(file_path)
+
+    def coord_list_double_clicked(self):
+        """
+        Relocate the focus view according to the coord
+        """
+        selected_coord = self.coord_list.currentItem().text()
+        selected_coord = selected_coord.replace('[', '').replace(']', '')
+        selected_coord = selected_coord.split(',')
+        selected_coord = [int(coord) for coord in selected_coord]
+        self.x_index = selected_coord[0]
+        self.y_index = selected_coord[1]
+        self.z_index = selected_coord[2]
+        self.x_slice_slider.setValue(self.x_index)
+        self.y_slice_slider.setValue(self.y_index)
+        self.z_slice_slider.setValue(self.z_index)
+        self.show_ct_image()
 
     def save_to_csv_clicked(self):
         print(self.ct_image_name)
@@ -241,25 +402,80 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # df.to_csv("Data/{}_coord.csv".format(self.ct_image_name), index=False)
         df.to_csv(os.path.join(self.current_open_file_folder, '{}_coord.csv'.format(self.ct_image_name)), index=False)
 
+
     def record_coord_clicked(self):
         # check if the coord is already in the list
         for coord in self.record_coord_list:
             if coord[0] == self.x_index and coord[1] == self.y_index and coord[2] == self.z_index:
                 return
         self.record_coord_list.append([self.x_index, self.y_index, self.z_index])
-        self.ct_image[self.x_index, self.y_index, self.z_index] = 255
-        self.record_coord_list.sort()
+        # self.ct_image[self.x_index, self.y_index, self.z_index] = 255
         
-        # show the coord in the list
-        self.coord_list.clear()
-        for coord in self.record_coord_list:
-            self.coord_list.addItem(str(coord))
+        # update coord list
+        self.update_coord_list()
+
+        # mark cube in the mask image
+        self.mark_cube([self.x_index, self.y_index, self.z_index])
+
+        # show image
+        self.show_ct_image()
+
+    def delete_coord_clicked(self):
+        """
+        Delete selected coord
+            1. get coord from coord list or current index
+               if current index is not in the coord list, do nothing
+            2. delete coord from coord list
+            3. delete mark in the mask image
+            4. show image
+            5. update coord list
+        """
+        # get selected coord
+        try:
+            selected_coord = self.coord_list.currentItem().text()
+            selected_coord = selected_coord.replace('[', '').replace(']', '')
+            selected_coord = selected_coord.split(',')
+            selected_coord = [int(coord) for coord in selected_coord]
+            # delete coord from coord list
+            self.record_coord_list.remove(selected_coord)
+        except:
+            selected_coord = [self.x_index, self.y_index, self.z_index]
+            if selected_coord in self.record_coord_list:
+                self.record_coord_list.remove(selected_coord)
+            else:
+                return
+
+        # delete coord from mask image
+        self.mark_cube(selected_coord, op="erase")
+
+        # show image
+        self.show_ct_image()
+
+        # update coord list
+        self.update_coord_list()
+
+    def coord_list_sort_clicked(self):
+        """
+        Change the order of coord list
+        option: a. sort by x, y, z value
+                b. sort by add time
+        """
+        if self.coord_list_sort_option == 'value':
+            self.coord_list_sort_option = 'add_time'
+            self.coord_list_sort.setText('Sort by add time')
+        elif self.coord_list_sort_option == 'add_time':
+            self.coord_list_sort_option = 'value'
+            self.coord_list_sort.setText('Sort by value')
+        self.update_coord_list()
 
     def init_for_new_image(self):
         # init everything except file list
         self.x_slice_slider.setValue(0)
         self.y_slice_slider.setValue(0)
         self.z_slice_slider.setValue(0)
+        self.focus_slider.setValue(self.rect_length)
+        self.mask_alpha_slider.setValue(int(self.mask_alpha * 10))
+        self.line_alpha_slider.setValue(int(self.line_alpha * 10))
         self.coord_list.clear()
 
 
