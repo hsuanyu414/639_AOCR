@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtGui import QMouseEvent, QWheelEvent
 
 class myWidget(QtWidgets.QWidget):
     def __init__(self, parent = None):
@@ -47,14 +47,14 @@ class myFocusView(QtWidgets.QGraphicsView):
                 dx = pos.x() - self.parent.parent.parent.rect_length
                 dy = pos.y() - self.parent.parent.parent.rect_length
                 mark_coord = [self.parent.parent.parent.x_slice_slider.value(), \
-                              min(self.parent.parent.parent.y_slice_slider.value() + int(dx), self.parent.parent.parent.y_slice_slider.maximum()), \
+                              self.parent.parent.parent.y_slice_slider.value() + int(dx), \
                               self.parent.parent.parent.z_slice_slider.value() - int(dy)]
                 self.parent.parent.parent.focus_mark(mark_coord, self.mark_erase_flag)
             elif self.objectName() == 'y_view_focus':
                 pos = self.map_to_scene(event.pos())
                 dx = pos.x() - self.parent.parent.parent.rect_length
                 dy = pos.y() - self.parent.parent.parent.rect_length
-                mark_coord = [min(self.parent.parent.parent.x_slice_slider.value() + int(dx), self.parent.parent.parent.x_slice_slider.maximum()), \
+                mark_coord = [self.parent.parent.parent.x_slice_slider.value() + int(dx), \
                               self.parent.parent.parent.y_slice_slider.value(), \
                               self.parent.parent.parent.z_slice_slider.value() - int(dy)]
                 self.parent.parent.parent.focus_mark(mark_coord, self.mark_erase_flag)
@@ -62,7 +62,7 @@ class myFocusView(QtWidgets.QGraphicsView):
                 pos = self.map_to_scene(event.pos())
                 dx = pos.x() - self.parent.parent.parent.rect_length
                 dy = pos.y() - self.parent.parent.parent.rect_length
-                mark_coord = [min(self.parent.parent.parent.x_slice_slider.value() + int(dx), self.parent.parent.parent.x_slice_slider.maximum()), \
+                mark_coord = [self.parent.parent.parent.x_slice_slider.value() + int(dx), \
                               self.parent.parent.parent.y_slice_slider.value() - int(dy), \
                               self.parent.parent.parent.z_slice_slider.value()]
                 self.parent.parent.parent.focus_mark(mark_coord, self.mark_erase_flag)
@@ -72,6 +72,15 @@ class myFocusView(QtWidgets.QGraphicsView):
             self.dragging = False
         elif event.button() == QtCore.Qt.RightButton:
             self.dragging = False
+
+    def wheelEvent(self, event: QWheelEvent | None) -> None:
+        """
+        Changing the rect length by mouse wheel
+        """
+        if event.angleDelta().y() > 0:
+            self.parent.parent.parent.focus_slider.setValue(min(self.parent.parent.parent.focus_slider.value() + 5, self.parent.parent.parent.focus_slider.maximum()))
+        else:
+            self.parent.parent.parent.focus_slider.setValue(max(self.parent.parent.parent.focus_slider.value() - 5, self.parent.parent.parent.focus_slider.minimum()))
 
 class myQGraphicsView(QtWidgets.QGraphicsView):
     def __init__(self, parent = None):
@@ -150,11 +159,11 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1366, 810)
+        MainWindow.resize(1920, 1080)
         self.centralwidget = myWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.slice_controller = QtWidgets.QGroupBox(self.centralwidget)
-        self.slice_controller.setGeometry(QtCore.QRect(50, 630, 331, 141))
+        self.slice_controller.setGeometry(QtCore.QRect(900, 670, 350, 141))
         self.slice_controller.setTitle("")
         self.slice_controller.setObjectName("slice_controller")
         self.z_plus_1 = QtWidgets.QPushButton(self.slice_controller)
@@ -185,68 +194,83 @@ class Ui_MainWindow(object):
         self.y_slice_slider.setOrientation(QtCore.Qt.Horizontal)
         self.y_slice_slider.setObjectName("y_slice_slider")
         self.focus_slider = QtWidgets.QSlider(self.centralwidget)
-        self.focus_slider.setGeometry(QtCore.QRect(620, 10, 100, 30))
+        self.focus_slider.setGeometry(QtCore.QRect(1050, 820, 100, 30))
         self.focus_slider.setOrientation(QtCore.Qt.Horizontal)
         self.focus_slider.setObjectName("focus_slider")
+        self.focus_slider_label = QtWidgets.QLabel(self.centralwidget)
+        self.focus_slider_label.setGeometry(QtCore.QRect(950, 820, 81, 31))
+        self.focus_slider_label.setObjectName("focus_slider_label")
+        self.mask_alpha_slider_label = QtWidgets.QLabel(self.centralwidget)
+        self.mask_alpha_slider_label.setGeometry(QtCore.QRect(950, 870, 81, 31))
+        self.mask_alpha_slider_label.setObjectName("mask_alpha_slider_label")
         self.mask_alpha_slider = QtWidgets.QSlider(self.centralwidget)
-        self.mask_alpha_slider.setGeometry(QtCore.QRect(800, 10, 100, 30))
+        self.mask_alpha_slider.setGeometry(QtCore.QRect(1050, 870, 100, 30))
         self.mask_alpha_slider.setOrientation(QtCore.Qt.Horizontal)
         self.mask_alpha_slider.setObjectName("mask_alpha_slider")
+        self.line_alpha_slider_label = QtWidgets.QLabel(self.centralwidget)
+        self.line_alpha_slider_label.setGeometry(QtCore.QRect(950, 920, 81, 31))
+        self.line_alpha_slider_label.setObjectName("line_alpha_slider_label")
         self.line_alpha_slider = QtWidgets.QSlider(self.centralwidget)
-        self.line_alpha_slider.setGeometry(QtCore.QRect(980, 10, 100, 30))
+        self.line_alpha_slider.setGeometry(QtCore.QRect(1050, 920, 100, 30))
         self.line_alpha_slider.setOrientation(QtCore.Qt.Horizontal)
         self.line_alpha_slider.setObjectName("line_alpha_slider")
         self.x_plus_1 = QtWidgets.QPushButton(self.slice_controller)
         self.x_plus_1.setGeometry(QtCore.QRect(280, 20, 41, 30))
         self.x_plus_1.setObjectName("x_plus_1")
         self.main_view = myQGroupBox(self.centralwidget)
-        self.main_view.setGeometry(QtCore.QRect(30, 50, 571, 581))
+        self.main_view.setGeometry(QtCore.QRect(10, 50, 880, 950))
         self.main_view.setObjectName("main_view")
         self.y_view = myQGraphicsView(self.main_view)
-        self.y_view.setGeometry(QtCore.QRect(290, 20, 250, 300))
+        self.y_view.setGeometry(QtCore.QRect(21, 20, 400, 450))
         self.y_view.setObjectName("y_view")
         self.z_view = myQGraphicsView(self.main_view)
-        self.z_view.setGeometry(QtCore.QRect(290, 330, 250, 250))
+        self.z_view.setGeometry(QtCore.QRect(21, 490, 400, 450))
         self.z_view.setObjectName("z_view")
         self.x_view = myQGraphicsView(self.main_view)
-        self.x_view.setGeometry(QtCore.QRect(21, 20, 250, 300))
+        self.x_view.setGeometry(QtCore.QRect(470, 20, 400, 450))
         self.x_view.setObjectName("x_view")
         self.main_view_2 = myQGroupBox(self.centralwidget)
-        self.main_view_2.setGeometry(QtCore.QRect(620, 50, 681, 231))
+        self.main_view_2.setGeometry(QtCore.QRect(900, 50, 600, 600))
         self.main_view_2.setObjectName("main_view_2")
         self.y_view_focus = myFocusView(self.main_view_2)
-        self.y_view_focus.setGeometry(QtCore.QRect(240, 20, 200, 200))
+        self.y_view_focus.setGeometry(QtCore.QRect(21, 20, 280, 280))
         self.y_view_focus.setObjectName("y_view_focus")
         self.z_view_focus = myFocusView(self.main_view_2)
-        self.z_view_focus.setGeometry(QtCore.QRect(460, 20, 200, 200))
+        self.z_view_focus.setGeometry(QtCore.QRect(21, 310, 280, 280))
         self.z_view_focus.setObjectName("z_view_focus")
         self.x_view_focus = myFocusView(self.main_view_2)
-        self.x_view_focus.setGeometry(QtCore.QRect(20, 20, 200, 200))
+        self.x_view_focus.setGeometry(QtCore.QRect(310, 20, 280, 280))
         self.x_view_focus.setObjectName("x_view_focus")
         self.record_coord = QtWidgets.QPushButton(self.centralwidget)
-        self.record_coord.setGeometry(QtCore.QRect(480, 640, 93, 28))
+        self.record_coord.setGeometry(QtCore.QRect(1160, 820, 93, 28))
         self.record_coord.setObjectName("record_coord")
         self.select_folder = QtWidgets.QPushButton(self.centralwidget)
         self.select_folder.setGeometry(QtCore.QRect(30, 10, 93, 28))
         self.select_folder.setObjectName("select_folder")
         self.save_to_csv = QtWidgets.QPushButton(self.centralwidget)
-        self.save_to_csv.setGeometry(QtCore.QRect(130, 10, 93, 28))
+        self.save_to_csv.setGeometry(QtCore.QRect(1400, 870, 93, 28))
         self.save_to_csv.setObjectName("save_to_csv")
         self.delete_coord = QtWidgets.QPushButton(self.centralwidget)
-        self.delete_coord.setGeometry(QtCore.QRect(480, 680, 93, 28))
+        self.delete_coord.setGeometry(QtCore.QRect(1160, 920, 93, 28))
         self.delete_coord.setObjectName("delete_coord")
         self.coord_list_sort = QtWidgets.QPushButton(self.centralwidget)
-        self.coord_list_sort.setGeometry(QtCore.QRect(620, 640, 93, 28))
+        self.coord_list_sort.setGeometry(QtCore.QRect(1400, 770, 93, 28))
         self.coord_list_sort.setObjectName("coord_list_sort")
+        self.coord_list_clear = QtWidgets.QPushButton(self.centralwidget)
+        self.coord_list_clear.setGeometry(QtCore.QRect(1400, 920, 93, 28))
+        self.coord_list_clear.setObjectName("coord_list_clear")
+        self.csv_restore = QtWidgets.QPushButton(self.centralwidget)
+        self.csv_restore.setGeometry(QtCore.QRect(1400, 820, 93, 28))
+        self.csv_restore.setObjectName("csv_restore")
         self.coord_list = QtWidgets.QListWidget(self.centralwidget)
-        self.coord_list.setGeometry(QtCore.QRect(620, 290, 256, 341))
+        self.coord_list.setGeometry(QtCore.QRect(1510, 510, 390, 450))
         self.coord_list.setObjectName("coord_list")
         self.file_list = QtWidgets.QListWidget(self.centralwidget)
-        self.file_list.setGeometry(QtCore.QRect(900, 290, 256, 341))
+        self.file_list.setGeometry(QtCore.QRect(1510, 50, 390, 450))
         self.file_list.setObjectName("file_list")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1366, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1920, 26))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -272,6 +296,11 @@ class Ui_MainWindow(object):
         self.save_to_csv.setText(_translate("MainWindow", "Save to CSV"))
         self.delete_coord.setText(_translate("MainWindow", "Delete Coord"))
         self.coord_list_sort.setText(_translate("MainWindow", "Sort by value"))
+        self.coord_list_clear.setText(_translate("MainWindow", "Clear All"))
+        self.csv_restore.setText(_translate("MainWindow", "Restore CSV"))
+        self.focus_slider_label.setText(_translate("MainWindow", "Window Size"))
+        self.mask_alpha_slider_label.setText(_translate("MainWindow", "Green Mask Alpha"))
+        self.line_alpha_slider_label.setText(_translate("MainWindow", "Red Line Alpha"))
 
 
 if __name__ == "__main__":
