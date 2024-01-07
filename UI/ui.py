@@ -9,13 +9,144 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtGui import QMouseEvent
+
+class myWidget(QtWidgets.QWidget):
+    def __init__(self, parent = None):
+        super(myWidget, self).__init__(parent)
+        self.parent = parent
+
+class myQGroupBox(QtWidgets.QGroupBox):
+    def __init__(self, parent = None):
+        super(myQGroupBox, self).__init__(parent)
+        self.parent = parent
+
+class myFocusView(QtWidgets.QGraphicsView):
+    def __init__(self, parent = None):
+        super(myFocusView, self).__init__(parent)
+        self.parent = parent
+        self.dragging = False
+        self.start_drag_pos = None
+
+    def map_to_scene(self, pos: QtCore.QPoint) -> QtCore.QPointF:
+        """Map the position of the mouse to the scene coordinates."""
+        return self.mapToScene(pos)
+    
+    def mousePressEvent(self, event: QMouseEvent | None) -> None:
+        if event.button() == QtCore.Qt.LeftButton:
+            self.dragging = True
+
+    def mouseMoveEvent(self, event: QMouseEvent | None) -> None:
+        if self.dragging:
+            if self.objectName() == 'x_view_focus':
+                pos = self.map_to_scene(event.pos())
+                dx = pos.x() - self.parent.parent.parent.rect_length
+                dy = pos.y() - self.parent.parent.parent.rect_length
+                mark_coord = [self.parent.parent.parent.x_slice_slider.value(), \
+                              min(self.parent.parent.parent.y_slice_slider.value() + int(dx), self.parent.parent.parent.y_slice_slider.maximum()), \
+                              self.parent.parent.parent.z_slice_slider.value() - int(dy)]
+                self.parent.parent.parent.focus_mark(mark_coord)
+            elif self.objectName() == 'y_view_focus':
+                pos = self.map_to_scene(event.pos())
+                dx = pos.x() - self.parent.parent.parent.rect_length
+                dy = pos.y() - self.parent.parent.parent.rect_length
+                mark_coord = [min(self.parent.parent.parent.x_slice_slider.value() + int(dx), self.parent.parent.parent.x_slice_slider.maximum()), \
+                              self.parent.parent.parent.y_slice_slider.value(), \
+                              self.parent.parent.parent.z_slice_slider.value() - int(dy)]
+                self.parent.parent.parent.focus_mark(mark_coord)
+            elif self.objectName() == 'z_view_focus':
+                pos = self.map_to_scene(event.pos())
+                dx = pos.x() - self.parent.parent.parent.rect_length
+                dy = pos.y() - self.parent.parent.parent.rect_length
+                mark_coord = [min(self.parent.parent.parent.x_slice_slider.value() + int(dx), self.parent.parent.parent.x_slice_slider.maximum()), \
+                              self.parent.parent.parent.y_slice_slider.value() - int(dy), \
+                              self.parent.parent.parent.z_slice_slider.value()]
+                self.parent.parent.parent.focus_mark(mark_coord)
+    
+    def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
+        if event.button() == QtCore.Qt.LeftButton:
+            self.dragging = False
+            self.start_drag_pos = None
+
+class myQGraphicsView(QtWidgets.QGraphicsView):
+    def __init__(self, parent = None):
+        super(myQGraphicsView, self).__init__(parent)
+        self.parent = parent
+        self.dragging = False
+        self.start_drag_pos = None
+
+    def map_to_scene(self, pos: QtCore.QPoint) -> QtCore.QPointF:
+        """Map the position of the mouse to the scene coordinates."""
+        return self.mapToScene(pos)
+
+    def mousePressEvent(self, event: QMouseEvent | None) -> None:
+        if event.button() == QtCore.Qt.LeftButton:
+            self.dragging = True
+            self.start_drag_pos = event.pos()
+            if self.objectName() == 'x_view':
+                # get the position of the mouse in the scene
+                pos = self.map_to_scene(event.pos())
+                self.parent.parent.parent.y_slice_slider.setValue(int(pos.x()))
+                self.parent.parent.parent.z_slice_slider.setValue(abs(min(int(pos.y()), self.parent.parent.parent.z_slice_slider.maximum()) - \
+                                                                      self.parent.parent.parent.z_slice_slider.maximum()))
+            elif self.objectName() == 'y_view':
+                pos = self.map_to_scene(event.pos())
+                self.parent.parent.parent.x_slice_slider.setValue(int(pos.x()))
+                self.parent.parent.parent.z_slice_slider.setValue(abs(min(int(pos.y()), self.parent.parent.parent.z_slice_slider.maximum()) - \
+                                                                      self.parent.parent.parent.z_slice_slider.maximum()))
+            elif self.objectName() == 'z_view':
+                pos = self.map_to_scene(event.pos())
+                self.parent.parent.parent.x_slice_slider.setValue(int(pos.x()))
+                self.parent.parent.parent.y_slice_slider.setValue(abs(min(int(pos.y()), self.parent.parent.parent.y_slice_slider.maximum()) - \
+                                                                      self.parent.parent.parent.y_slice_slider.maximum()))
+    
+    def mouseMoveEvent(self, event: QMouseEvent | None) -> None:
+        if self.dragging:
+            cur_pos = self.mapToScene(event.pos())
+            if self.objectName() == 'x_view':
+                self.parent.parent.parent.y_slice_slider.setValue(int(cur_pos.x()))
+                self.parent.parent.parent.z_slice_slider.setValue(abs(min(int(cur_pos.y()), self.parent.parent.parent.z_slice_slider.maximum()) - \
+                                                                      self.parent.parent.parent.z_slice_slider.maximum()))
+            elif self.objectName() == 'y_view':
+                self.parent.parent.parent.x_slice_slider.setValue(int(cur_pos.x()))
+                self.parent.parent.parent.z_slice_slider.setValue(abs(min(int(cur_pos.y()), self.parent.parent.parent.z_slice_slider.maximum()) - \
+                                                                      self.parent.parent.parent.z_slice_slider.maximum()))
+            elif self.objectName() == 'z_view':
+                self.parent.parent.parent.x_slice_slider.setValue(int(cur_pos.x()))
+                self.parent.parent.parent.y_slice_slider.setValue(abs(min(int(cur_pos.y()), self.parent.parent.parent.y_slice_slider.maximum()) - \
+                                                                      self.parent.parent.parent.y_slice_slider.maximum()))
+                
+    def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
+        if event.button() == QtCore.Qt.LeftButton:
+            self.dragging = False
+            self.start_drag_pos = None
+
+
+    def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
+        """
+        Changing slice by mouse wheel
+        """
+        if event.angleDelta().y() > 0:
+            if self.objectName() == 'x_view':
+                self.parent.parent.parent.x_slice_slider.setValue(min(self.parent.parent.parent.x_slice_slider.value() + 1, self.parent.parent.parent.x_slice_slider.maximum()))
+            elif self.objectName() == 'y_view':
+                self.parent.parent.parent.y_slice_slider.setValue(min(self.parent.parent.parent.y_slice_slider.value() + 1, self.parent.parent.parent.y_slice_slider.maximum()))
+            elif self.objectName() == 'z_view':
+                self.parent.parent.parent.z_slice_slider.setValue(min(self.parent.parent.parent.z_slice_slider.value() + 1, self.parent.parent.parent.z_slice_slider.maximum()))
+        else:
+            if self.objectName() == 'x_view':
+                self.parent.parent.parent.x_slice_slider.setValue(max(self.parent.parent.parent.x_slice_slider.value() - 1, self.parent.parent.parent.x_slice_slider.minimum()))
+            elif self.objectName() == 'y_view':
+                self.parent.parent.parent.y_slice_slider.setValue(max(self.parent.parent.parent.y_slice_slider.value() - 1, self.parent.parent.parent.y_slice_slider.minimum()))
+            elif self.objectName() == 'z_view':
+                self.parent.parent.parent.z_slice_slider.setValue(max(self.parent.parent.parent.z_slice_slider.value() - 1, self.parent.parent.parent.z_slice_slider.minimum()))
 
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1366, 810)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget = myWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.slice_controller = QtWidgets.QGroupBox(self.centralwidget)
         self.slice_controller.setGeometry(QtCore.QRect(50, 630, 331, 141))
@@ -63,28 +194,28 @@ class Ui_MainWindow(object):
         self.x_plus_1 = QtWidgets.QPushButton(self.slice_controller)
         self.x_plus_1.setGeometry(QtCore.QRect(280, 20, 41, 30))
         self.x_plus_1.setObjectName("x_plus_1")
-        self.main_view = QtWidgets.QGroupBox(self.centralwidget)
+        self.main_view = myQGroupBox(self.centralwidget)
         self.main_view.setGeometry(QtCore.QRect(30, 50, 571, 581))
         self.main_view.setObjectName("main_view")
-        self.y_view = QtWidgets.QGraphicsView(self.main_view)
+        self.y_view = myQGraphicsView(self.main_view)
         self.y_view.setGeometry(QtCore.QRect(290, 20, 250, 300))
         self.y_view.setObjectName("y_view")
-        self.z_view = QtWidgets.QGraphicsView(self.main_view)
+        self.z_view = myQGraphicsView(self.main_view)
         self.z_view.setGeometry(QtCore.QRect(290, 330, 250, 250))
         self.z_view.setObjectName("z_view")
-        self.x_view = QtWidgets.QGraphicsView(self.main_view)
+        self.x_view = myQGraphicsView(self.main_view)
         self.x_view.setGeometry(QtCore.QRect(21, 20, 250, 300))
         self.x_view.setObjectName("x_view")
-        self.main_view_2 = QtWidgets.QGroupBox(self.centralwidget)
+        self.main_view_2 = myQGroupBox(self.centralwidget)
         self.main_view_2.setGeometry(QtCore.QRect(620, 50, 681, 231))
         self.main_view_2.setObjectName("main_view_2")
-        self.y_view_focus = QtWidgets.QGraphicsView(self.main_view_2)
+        self.y_view_focus = myFocusView(self.main_view_2)
         self.y_view_focus.setGeometry(QtCore.QRect(240, 20, 200, 200))
         self.y_view_focus.setObjectName("y_view_focus")
-        self.z_view_focus = QtWidgets.QGraphicsView(self.main_view_2)
+        self.z_view_focus = myFocusView(self.main_view_2)
         self.z_view_focus.setGeometry(QtCore.QRect(460, 20, 200, 200))
         self.z_view_focus.setObjectName("z_view_focus")
-        self.x_view_focus = QtWidgets.QGraphicsView(self.main_view_2)
+        self.x_view_focus = myFocusView(self.main_view_2)
         self.x_view_focus.setGeometry(QtCore.QRect(20, 20, 200, 200))
         self.x_view_focus.setObjectName("x_view_focus")
         self.record_coord = QtWidgets.QPushButton(self.centralwidget)

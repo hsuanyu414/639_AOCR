@@ -225,6 +225,30 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # self.show_image(self.ct_image[:, self.y_index, ::-1].T, self.y_view)
         # self.show_image(self.ct_image[:, :, self.z_index].T, self.z_view)
 
+    def focus_mark(self, coord_focus):
+        """
+        Mark the coord with mouse click in focus view
+            Input:
+                coord_focus:
+                    type: list
+                    description: index of single record
+                    example: [x, y, z]
+        """
+        # check if the coord is already in the list
+        for coord in self.record_coord_list:
+            if coord[0] == coord_focus[0] and coord[1] == coord_focus[1] and coord[2] == coord_focus[2]:
+                return
+        self.record_coord_list.append(coord_focus)
+        
+        # update coord list
+        self.update_coord_list()
+
+        # mark cube in the mask image
+        self.mark_cube(coord_focus)
+
+        # show image
+        self.show_ct_image()
+
     def initialize_mask_image(self):
         """
         Initialize mask image
@@ -330,16 +354,19 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # just open ./Data folder
         # self.current_open_file_folder = './Data'
         # select folder and read image
-        self.current_open_file_folder = QFileDialog.getExistingDirectory(self, "Select Folder")
-        
-        self.opened_file_list.clear()
-        for file in os.listdir(self.current_open_file_folder):
-            if file.endswith('.nii.gz'):
-                self.opened_file_list.append(file)
-        self.opened_file_list.sort()
+        try:
+            self.current_open_file_folder = QFileDialog.getExistingDirectory(self, "Select Folder")
+            self.opened_file_list.clear()
+            for file in os.listdir(self.current_open_file_folder):
+                if file.endswith('.nii.gz'):
+                    self.opened_file_list.append(file)
+            self.opened_file_list.sort()
 
-        for file in self.opened_file_list:
-            self.file_list.addItem(file)
+            for file in self.opened_file_list:
+                self.file_list.addItem(file)
+        except:
+            return
+    
 
     def read_image(self, file_path):
         # clear coord list
