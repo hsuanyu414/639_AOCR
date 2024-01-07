@@ -26,7 +26,7 @@ class myFocusView(QtWidgets.QGraphicsView):
         super(myFocusView, self).__init__(parent)
         self.parent = parent
         self.dragging = False
-        self.start_drag_pos = None
+        self.mark_erase_flag = False
 
     def map_to_scene(self, pos: QtCore.QPoint) -> QtCore.QPointF:
         """Map the position of the mouse to the scene coordinates."""
@@ -35,6 +35,10 @@ class myFocusView(QtWidgets.QGraphicsView):
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
         if event.button() == QtCore.Qt.LeftButton:
             self.dragging = True
+            self.mark_erase_flag = False
+        elif event.button() == QtCore.Qt.RightButton:
+            self.dragging = True
+            self.mark_erase_flag = True
 
     def mouseMoveEvent(self, event: QMouseEvent | None) -> None:
         if self.dragging:
@@ -45,7 +49,7 @@ class myFocusView(QtWidgets.QGraphicsView):
                 mark_coord = [self.parent.parent.parent.x_slice_slider.value(), \
                               min(self.parent.parent.parent.y_slice_slider.value() + int(dx), self.parent.parent.parent.y_slice_slider.maximum()), \
                               self.parent.parent.parent.z_slice_slider.value() - int(dy)]
-                self.parent.parent.parent.focus_mark(mark_coord)
+                self.parent.parent.parent.focus_mark(mark_coord, self.mark_erase_flag)
             elif self.objectName() == 'y_view_focus':
                 pos = self.map_to_scene(event.pos())
                 dx = pos.x() - self.parent.parent.parent.rect_length
@@ -53,7 +57,7 @@ class myFocusView(QtWidgets.QGraphicsView):
                 mark_coord = [min(self.parent.parent.parent.x_slice_slider.value() + int(dx), self.parent.parent.parent.x_slice_slider.maximum()), \
                               self.parent.parent.parent.y_slice_slider.value(), \
                               self.parent.parent.parent.z_slice_slider.value() - int(dy)]
-                self.parent.parent.parent.focus_mark(mark_coord)
+                self.parent.parent.parent.focus_mark(mark_coord, self.mark_erase_flag)
             elif self.objectName() == 'z_view_focus':
                 pos = self.map_to_scene(event.pos())
                 dx = pos.x() - self.parent.parent.parent.rect_length
@@ -61,12 +65,13 @@ class myFocusView(QtWidgets.QGraphicsView):
                 mark_coord = [min(self.parent.parent.parent.x_slice_slider.value() + int(dx), self.parent.parent.parent.x_slice_slider.maximum()), \
                               self.parent.parent.parent.y_slice_slider.value() - int(dy), \
                               self.parent.parent.parent.z_slice_slider.value()]
-                self.parent.parent.parent.focus_mark(mark_coord)
+                self.parent.parent.parent.focus_mark(mark_coord, self.mark_erase_flag)
     
     def mouseReleaseEvent(self, event: QMouseEvent | None) -> None:
         if event.button() == QtCore.Qt.LeftButton:
             self.dragging = False
-            self.start_drag_pos = None
+        elif event.button() == QtCore.Qt.RightButton:
+            self.dragging = False
 
 class myQGraphicsView(QtWidgets.QGraphicsView):
     def __init__(self, parent = None):

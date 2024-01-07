@@ -225,26 +225,40 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # self.show_image(self.ct_image[:, self.y_index, ::-1].T, self.y_view)
         # self.show_image(self.ct_image[:, :, self.z_index].T, self.z_view)
 
-    def focus_mark(self, coord_focus):
+    def focus_mark(self, coord_focus, flag):
         """
-        Mark the coord with mouse click in focus view
+        Mark / Erase the coord with mouse click in focus view
+            flag: 0. mark, 1. erase
+            * The range of erase is 3 times of cube size
+            * The range of mark is 1 time of cube size
             Input:
                 coord_focus:
                     type: list
                     description: index of single record
                     example: [x, y, z]
         """
-        # check if the coord is already in the list
-        for coord in self.record_coord_list:
-            if coord[0] == coord_focus[0] and coord[1] == coord_focus[1] and coord[2] == coord_focus[2]:
+        op = "mark" if flag == 0 else "erase"
+        if op == "mark":
+            # check if the coord is already in the list
+            for coord in self.record_coord_list:
+                if coord[0] == coord_focus[0] and coord[1] == coord_focus[1] and coord[2] == coord_focus[2]:
+                    return
+            self.record_coord_list.append(coord_focus)
+        elif op == "erase":
+            for coord in self.record_coord_list:
+                if abs(coord[0] - coord_focus[0]) <= self.cube_size[0] * 3 and \
+                    abs(coord[1] - coord_focus[1]) <= self.cube_size[1] * 3 and \
+                    abs(coord[2] - coord_focus[2]) <= self.cube_size[2] * 3:
+                    self.record_coord_list.remove(coord)
+                    break
+            else:
                 return
-        self.record_coord_list.append(coord_focus)
         
         # update coord list
         self.update_coord_list()
 
         # mark cube in the mask image
-        self.mark_cube(coord_focus)
+        self.mark_cube(coord_focus, op = op)
 
         # show image
         self.show_ct_image()
@@ -272,10 +286,16 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 example: [x, y, z]
         """
         half_cube_size = [int(self.cube_size[0]/2), int(self.cube_size[1]/2), int(self.cube_size[2]/2)]
-        self.mask_image[coord[0], coord[1], coord[2]] = 255 if op == "mark" else 0
-        self.mask_image[max(0, coord[0]-half_cube_size[0]):min(coord[0]+half_cube_size[0], self.mask_image.shape[0]), 
-                        max(0, coord[1]-half_cube_size[1]):min(coord[1]+half_cube_size[1], self.mask_image.shape[1]), 
-                        max(0, coord[2]-half_cube_size[2]):min(coord[2]+half_cube_size[2], self.mask_image.shape[2])] = 128 if op == "mark" else 0
+        if op == "mark":
+            self.mask_image[coord[0], coord[1], coord[2]] = 255
+            self.mask_image[max(0, coord[0]-half_cube_size[0]):min(coord[0]+half_cube_size[0], self.mask_image.shape[0]), 
+                            max(0, coord[1]-half_cube_size[1]):min(coord[1]+half_cube_size[1], self.mask_image.shape[1]), 
+                            max(0, coord[2]-half_cube_size[2]):min(coord[2]+half_cube_size[2], self.mask_image.shape[2])] = 128
+        elif op == "erase":
+            # pixel in the cube is marked as 0
+            self.mask_image[max(0, coord[0]-self.cube_size[0]):min(coord[0]+self.cube_size[0], self.mask_image.shape[0]), 
+                            max(0, coord[1]-self.cube_size[1]):min(coord[1]+self.cube_size[1], self.mask_image.shape[1]), 
+                            max(0, coord[2]-self.cube_size[2]):min(coord[2]+self.cube_size[2], self.mask_image.shape[2])] = 0
         
     def update_coord_list(self):
         """
