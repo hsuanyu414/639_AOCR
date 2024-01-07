@@ -1,13 +1,14 @@
 # 639_AOCR
 ## 環境設置
+- python 請使用 3.12.0
 - pip install -r requirements.txt
 
-# main.py
+# 標記工具
 usage:
-- 將資料放入 `./Data/` 資料夾中
 - 執行 main.py
+- 其他操作參考說明
 
-# id2serial.py
+# 轉換工具
 usage:
 - 將資料放入 `./Data/` 資料夾中
 - 執行 id2serial.py [--action ACTION] 

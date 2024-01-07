@@ -1,3 +1,5 @@
 PyQt5
 nibabel
 pandas
+opencv-python
+matplotlib
