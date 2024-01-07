@@ -455,7 +455,6 @@ class MyMainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             for file in self.opened_file_list:
                 self.file_list.addItem(file)
         except:
-            print("select_folder_clicked error")
             return
         
     def read_csv(self):
